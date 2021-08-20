@@ -1,14 +1,14 @@
 'use strict';
 
 const request = require('supertest');
-const assert = require('chai').assert;
+const assert = require('assert');
 const _ = require('lodash');
 
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database(':memory:');
 
 const app = require('../src/app')(db);
-const buildSchemas = require('../src/utils/databaseWrapper').buildSchemas;
+const buildSchemas = require('../src/schemas');
 
 const prepareData = async function() {
   const data = {
@@ -28,7 +28,11 @@ const prepareData = async function() {
             'endLat, endLong, riderName, driverName, driverVehicle) VALUES' +
             '(?, ?, ?, ?, ?, ?, ?)', values, function(err) {
       if (err) {
-        return err;
+        logger.error(err);
+        return res.send({
+          error_code: 'SERVER_ERROR',
+          message: 'Unknown error',
+        });
       }
     });
   });
@@ -41,7 +45,9 @@ describe('API tests', () => {
       if (err) {
         return done(err);
       }
+
       buildSchemas(db);
+
       done();
     });
   });
@@ -59,14 +65,14 @@ describe('API tests', () => {
     it('should return not found', (done) => {
       request(app)
           .get('/rides')
-          .expect(404)
+          .expect(200)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'RESOURCE_NOT_FOUND');
+            assert(res.body.error_code === 'RIDES_NOT_FOUND_ERROR');
           })
           .end(done);
     });
 
-    it('should return all rides', (done) => {
+    it('should return fine', (done) => {
       request(app)
           .post('/rides')
           .send({
@@ -79,14 +85,13 @@ describe('API tests', () => {
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(201)
+          .expect(200)
           .then((res) => {
             request(app)
                 .get(`/rides`)
                 .expect(200)
                 .expect((getResponse) => {
-                  assert.strictEqual(getResponse.body.data[0].rideID,
-                      res.body.rideID);
+                  assert(getResponse.body.data[0].rideID === res.body.rideID);
                 })
                 .end(done);
           });
@@ -101,9 +106,9 @@ describe('API tests', () => {
             'page': 'abc',
             'size': 'abc',
           })
-          .expect(400)
+          .expect(200)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
@@ -115,9 +120,9 @@ describe('API tests', () => {
             'page': 0,
             'size': -1,
           })
-          .expect(400)
+          .expect(200)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
@@ -128,9 +133,9 @@ describe('API tests', () => {
           .get('/rides')
           .expect(200)
           .expect((res) => {
-            assert.strictEqual(res.body.page, 1);
-            assert.strictEqual(res.body.size, 10);
-            assert.isTrue(res.body.data.length <= res.body.size);
+            assert(res.body.page === 1);
+            assert(res.body.size === 10);
+            assert(res.body.data.length <= res.body.size);
           })
           .end(done);
     });
@@ -145,9 +150,9 @@ describe('API tests', () => {
             'page': 99,
           })
           .expect((res) => {
-            assert.strictEqual(res.body.page, res.body.totalPages);
-            assert.strictEqual(res.body.size, 10);
-            assert.isTrue(res.body.data.length <= res.body.size);
+            assert(res.body.page === res.body.totalPages);
+            assert(res.body.size === 10);
+            assert(res.body.data.length <= res.body.size);
           })
           .end(done);
     });
@@ -162,8 +167,8 @@ describe('API tests', () => {
             'page': 1,
           })
           .expect((res) => {
-            assert.strictEqual(res.body.page, res.body.totalPages);
-            assert.strictEqual(res.body.size, res.body.data.length);
+            assert(res.body.page === res.body.totalPages);
+            assert(res.body.size === res.body.data.length);
           })
           .end(done);
     });
@@ -173,14 +178,14 @@ describe('API tests', () => {
     it('should return not found', (done) => {
       request(app)
           .get('/rides/99')
-          .expect(404)
+          .expect(200)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'RESOURCE_NOT_FOUND');
+            assert(res.body.error_code === 'RIDES_NOT_FOUND_ERROR');
           })
           .end(done);
     });
 
-    it('should return ride', (done) => {
+    it('should return fine', (done) => {
       request(app)
           .post('/rides')
           .send({
@@ -193,14 +198,14 @@ describe('API tests', () => {
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(201)
+          .expect(200)
           .then((res) => {
             request(app)
                 .get(`/rides/${res.body.rideID}`)
                 .expect(200)
                 .expect((getResponse) => {
                   // console.log(getResponse);
-                  assert.strictEqual(getResponse.body.rideID, res.body.rideID);
+                  assert(getResponse.body.rideID === res.body.rideID);
                 })
                 .end(done);
           });
@@ -221,9 +226,9 @@ describe('API tests', () => {
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(201)
+          .expect(200)
           .expect((res) => {
-            assert.isNotNull(res.body.rideID);
+            assert(res.body.rideID != null);
           })
           .end(done);
     });
@@ -241,9 +246,8 @@ describe('API tests', () => {
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(400)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
@@ -261,9 +265,8 @@ describe('API tests', () => {
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(400)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
@@ -276,14 +279,13 @@ describe('API tests', () => {
             'start_lat': 70,
             'end_long': 110,
             'end_lat': 75,
-            'rider_name': '',
+            'rider_name': 123,
             'driver_name': 'John',
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(400)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
@@ -297,18 +299,17 @@ describe('API tests', () => {
             'end_long': 110,
             'end_lat': 75,
             'rider_name': 'Max',
-            'driver_name': '',
+            'driver_name': 123,
             'driver_vehicle': 'Car',
           })
           .set('Content-Type', 'application/json')
-          .expect(400)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
 
-    it('should fail with invalid driver\'s vehicle', (done) => {
+    it('should fail with invalid driver\'s name', (done) => {
       request(app)
           .post('/rides')
           .send({
@@ -318,33 +319,11 @@ describe('API tests', () => {
             'end_lat': 75,
             'rider_name': 'Max',
             'driver_name': 'John',
-            'driver_vehicle': '',
+            'driver_vehicle': 123,
           })
           .set('Content-Type', 'application/json')
-          .expect(400)
           .expect((res) => {
-            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
-          })
-          .end(done);
-    });
-
-    it('should not delete the DB', (done) => {
-      request(app)
-          .post('/rides')
-          .send({
-            'start_long': 100,
-            'start_lat': 70,
-            'end_long': 110,
-            'end_lat': 75,
-            'rider_name': 'DROP TABLE Rides',
-            'driver_name': 'SaniTize this?><:)(*)',
-            'driver_vehicle': 'Car',
-          })
-          .set('Content-Type', 'application/json')
-          .expect(201)
-          .expect((res) => {
-            assert.isNotNull(res.body.rideID);
-            assert.strictEqual(res.body.driverName, 'SaniTize this');
+            assert(res.body.error_code === 'VALIDATION_ERROR');
           })
           .end(done);
     });
