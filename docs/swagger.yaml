@@ -1,0 +1,190 @@
+swagger: "2.0"
+info:
+  description: "This is the API documentation for Rides Service which enables storing and viewing of rides data."
+  version: "1.0.0"
+  title: "Rides Service"
+host: "localhost:8010"
+tags:
+- name: "rides"
+  description: "Store and Retrieve of rides data"
+- name: "health"
+  description: "Check the availability of Rides Service"
+schemes:
+- "http"
+paths:
+  /health:
+    get:
+      tags:
+      - "health"
+      summary: "Check the availability of Rides Service"
+      responses:
+        200:
+          description: "Success"
+  /rides:
+    get:
+      tags:
+        - "rides"
+      summary: "Find all rides"
+      operationId: "getAllRides"
+      produces:
+        - "application/json"
+      parameter:
+        - name: "page"
+          in: "path"
+          description: "The input page of the rides data. It must be > 0. Default is 1."
+          required: false
+          type: "integer"
+          format: "int64"
+
+        - name: "size"
+          in: "path"
+          description: "Number of rides data per page of the rides data. It must be > 0. Default is 10."
+          required: false
+          type: "integer"
+          format: "int64"
+
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/GetRidesResponse"
+        404:
+          description: "Rides not found"
+        500:
+          description: "Server error"
+    post:
+      tags:
+        - "rides"
+      summary: "Create a new ride data"
+      description: ""
+      operationId: "createNewRide"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Rides information"
+          required: true
+          schema:
+            $ref: "#/definitions/RidesRequest"
+      responses:
+        201:
+          description: "Rides creation is successful"
+        200:
+          description: "Rides is already created"
+        400:
+          description: "Bad request"
+        500:
+          description: "Server error"
+
+  /rides/{rideId}:
+    get:
+      tags:
+      - "rides"
+      summary: "Find ride by ID"
+      description: "Returns a single ride"
+      operationId: "getRideById"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "rideId"
+        in: "path"
+        description: "ID of ride to return"
+        required: true
+        type: "integer"
+        format: "int64"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/RidesResponse"
+        404:
+          description: "Rides not found"
+        500:
+          description: "Server error"
+
+definitions:
+  RidesRequest:
+    type: "object"
+    properties:
+      start_long:
+        type: "integer"
+        format: "int64"
+        description: "The initial longitude of the ride"
+      start_lat:
+        type: "integer"
+        format: "int64"
+        description: "The initial latitude of the ride"
+      end_long:
+        type: "integer"
+        format: "int64"
+        description: "The final longitude of the ride"
+      end_lat:
+        type: "integer"
+        format: "int64"
+        description: "The final latitude of the ride"
+      rider_name:
+        type: "string"
+        description: "The name of the rider"
+      driver_name:
+        type: "string"
+        description: "The name of the rider"
+      driver_vehicle:
+        type: "string"
+        description: "The name of the rider"
+  RidesResponse:
+    type: "object"
+    properties:
+      rideID:
+        type: "string"
+        description: "The unique identifier of rides"
+      startLong:
+        type: "integer"
+        format: "int64"
+        description: "The initial longitude of the ride"
+      startLat:
+        type: "integer"
+        format: "int64"
+        description: "The initial latitude of the ride"
+      endLong:
+        type: "integer"
+        format: "int64"
+        description: "The final longitude of the ride"
+      endLat:
+        type: "integer"
+        format: "int64"
+        description: "The final latitude of the ride"
+      riderName:
+        type: "string"
+        description: "The name of the rider"
+      driverName:
+        type: "string"
+        description: "The name of the rider"
+      driverVehicle:
+        type: "string"
+        description: "The name of the rider"
+  GetRidesResponse:
+    type: "object"
+    properties:
+      totalItems:
+        type: "integer"
+        format: "int64"
+        description: "Total number of rides"
+      totalPages:
+        type: "integer"
+        format: "int64"
+        description: "Total number of pages with the given query"
+      page:
+        type: "integer"
+        format: "int64"
+        description: "Total current page of the data"
+      size:
+        type: "integer"
+        format: "int64"
+        description: "Maximum number of rides per page"
+      data:
+        schema:
+          $ref: "#/definitions/RidesResponse"
+        description: "Array of rides data"
