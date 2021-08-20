@@ -69,7 +69,7 @@ module.exports = (db) => {
       req.body.end_lat, req.body.end_long, req.body.rider_name,
       req.body.driver_name, req.body.driver_vehicle];
 
-    const result = db.run('INSERT INTO Rides(startLat, startLong,' +
+    db.run('INSERT INTO Rides(startLat, startLong,' +
         'endLat, endLong, riderName, driverName, driverVehicle) VALUES' +
         '(?, ?, ?, ?, ?, ?, ?)', values, function(err) {
       if (err) {
@@ -79,9 +79,9 @@ module.exports = (db) => {
           message: 'Unknown error',
         });
       }
-
-      db.all('SELECT * FROM Rides WHERE' +
-          'rideID = ?', result.id, function(err, rows) {
+      db.all('SELECT * FROM Rides WHERE ' +
+          // eslint-disable-next-line no-invalid-this
+          'rideID = ?', this.lastID, function(err, rows) {
         if (err) {
           logger.error(err);
           return res.send({
@@ -90,12 +90,25 @@ module.exports = (db) => {
           });
         }
 
-        res.send(rows);
+        res.send(rows[0]);
       });
     });
   });
 
   app.get('/rides', (req, res) => {
+    const pageNo = req.query.page;
+    const size = req.query.size;
+
+    if (pageNo && size &&
+        ((!Number.isInteger(Number(pageNo)) ||
+            !Number.isInteger(Number(size))) ||
+        (Number(pageNo) <= 0 || Number(size) <=0))) {
+      logger.error('Validation error');
+      return res.send({
+        error_code: 'VALIDATION_ERROR',
+        message: 'page and size must be integer > 0',
+      });
+    }
     logger.info('[GET] /rides is hit');
     db.all('SELECT * FROM Rides', function(err, rows) {
       if (err) {
@@ -113,8 +126,8 @@ module.exports = (db) => {
           message: 'Could not find any rides',
         });
       }
-
-      res.send(rows);
+      const resp = paginate(rows, pageNo, size);
+      res.send(resp);
     });
   });
 
@@ -138,9 +151,32 @@ module.exports = (db) => {
         });
       }
 
-      res.send(rows);
+      res.send(rows[0]);
     });
   });
 
   return app;
+};
+
+const paginate = function(data, pageNo=1, size=10) {
+  const totalPages = Math.ceil(data.length / size);
+
+  // ensure current page isn't out of range
+  if (pageNo > totalPages) {
+    pageNo = totalPages;
+  }
+
+  // calculate start and end item indexes
+  const startIndex = (pageNo - 1) * size;
+  const endIndex = Math.min(startIndex + size, data.length);
+  logger.info(`page: ${pageNo} size: ${size} \
+  startIndex: ${startIndex} endIndex: ${endIndex} \
+  totalPages: ${totalPages} totalItems: ${data.length}`);
+  return {
+    totalItems: data.length,
+    totalPages: totalPages,
+    page: Number(pageNo),
+    size: Math.min(size, data.length),
+    data: data.slice(startIndex, endIndex),
+  };
 };
