@@ -35,10 +35,12 @@ const DB_SCRIPTS = {
   createTable: (tableName, tableContent) => `CREATE TABLE ${tableName}`+
         `(${tableContent})`,
   getAllRides: () => 'SELECT * FROM Rides',
-  getRideById: (id) => `SELECT * FROM Rides WHERE rideID='${id}'`,
+  getRideById: () => 'SELECT * FROM Rides WHERE rideID=?',
+  getRideByRowId: () => 'SELECT * FROM Rides WHERE rowid=?',
   createRide: () => 'INSERT INTO Rides(startLat, startLong,' +
-        'endLat, endLong, riderName, driverName, driverVehicle) VALUES' +
-        '(?, ?, ?, ?, ?, ?, ?)',
+        'endLat, endLong, riderName, driverName, ' +
+    'driverVehicle, rideID) VALUES' +
+        '(?, ?, ?, ?, ?, ?, ?, ?)',
 };
 
 module.exports = {
